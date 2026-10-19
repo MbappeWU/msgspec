@@ -146,6 +146,7 @@ mapcls_from_attributes_and_array_like = pytest.mark.parametrize(
         (GetAttrObj, True, False),
         (GetAttrOrItemObj, True, True),
         (GetAttrOrItemObj, True, False),
+        (GetAttrOrItemObj, False, False),
         (GetItemObj, False, False),
     ],
 )
@@ -1964,6 +1965,23 @@ class TestStruct:
             ValidationError, match=r"Expected `int`, got `method` - at `\$\.keys`"
         ):
             convert(msg, Ex, from_attributes=True)
+
+    def test_getitem_raises_falls_back_to_attributes(self):
+        class Row:
+            def __init__(self, id, name):
+                self.id = id
+                self.name = name
+
+            def __getitem__(self, key):
+                if isinstance(key, int):
+                    raise IndexError(key)
+                raise KeyError(key)
+
+        class Ex(Struct):
+            id: int
+            name: str
+
+        assert convert(Row(1, "ada"), Ex) == Ex(1, "ada")
 
     @pytest.mark.parametrize("mapcls", [GetAttrObj, GetItemObj])
     def test_object_to_struct_with_renamed_fields(self, mapcls):
